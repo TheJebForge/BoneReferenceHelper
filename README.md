@@ -3,6 +3,8 @@
 A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https://neos.com/) that adds a lot of useful things for transferring bone references of skinned mesh renderers
 
 Buttons that get added:
+![image](https://user-images.githubusercontent.com/12719947/185762036-d35a98b6-ea70-4aea-b71c-161f2ef099a5.png)
+
 - Copy Bone References into Clipboard - reads all the references in bone list of SkinnedMeshRenderer and serializes them into Clipboard
 - Paste directly - reads reference list from Clipboard and directly sets bone list to whatever was found in the Clipboard
 - Paste based on names - reads reference list from Clipboard, and then goes through the current bone list of the skinned mesh renderer, replacing every bone reference with one that was found in Clipboard
