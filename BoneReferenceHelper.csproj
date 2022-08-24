@@ -31,6 +31,9 @@
     <Reference Include="BaseX">
       <HintPath>$(NeosPath)Neos_Data\Managed\BaseX.dll</HintPath>
     </Reference>
+    <Reference Include="CodeX">
+      <HintPath>$(NeosPath)Neos_Data\Managed\CodeX.dll</HintPath>
+    </Reference>
     <Reference Include="NeosModLoader">
       <HintPath>$(NeosPath)Libraries\NeosModLoader.dll</HintPath>
       <HintPath Condition="Exists('$(NeosPath)NeosModLoader.dll')">$(NeosPath)NeosModLoader.dll</HintPath>

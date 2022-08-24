@@ -1,4 +1,5 @@
 ﻿using BaseX;
+using CodeX;
 using NeosModLoader;
 using HarmonyLib;
 using FrooxEngine;
@@ -29,7 +30,9 @@ namespace BoneReferenceHelper
         class SkinnedMeshRenderer_BuildInspectorUI_Patch
         {
             static void Postfix(SkinnedMeshRenderer __instance, UIBuilder ui) {
-                ui.Style.MinHeight = 24 * 3 + 4 * 2 + 36;
+                ui.Style.MinHeight = 24 * 4 + 4 * 3 + 36;
+
+                bool UseMeshBoneListInstead = false;
                 
                 ui.NestInto(ui.Empty("BoneRefHelper"));
                 {
@@ -45,12 +48,13 @@ namespace BoneReferenceHelper
                     {
                         ui.VerticalLayout(4f);
                         {
-                            ui.Button("Copy Bone References into Clipboard").LocalPressed += (button, data) => CopyBoneReferences(__instance, button);
+                            ui.Checkbox("Use mesh bone list for names instead", false).State.OnValueChange += field => UseMeshBoneListInstead = field.Value;
+                            ui.Button("Copy Bone References into Clipboard").LocalPressed += (button, data) => CopyBoneReferences(__instance, button, UseMeshBoneListInstead);
 
                             ui.HorizontalLayout(4f);
                             {
                                 ui.Button("Paste directly").LocalPressed += (button, data) => PasteBoneReferencesDirectly(__instance, button);
-                                ui.Button("Paste based on current names").LocalPressed += (button, data) => PasteBoneReferencesBasedOnNames(__instance, button);
+                                ui.Button("Paste based on current names").LocalPressed += (button, data) => PasteBoneReferencesBasedOnNames(__instance, button, UseMeshBoneListInstead);
                             }
                             ui.NestOut();
 
@@ -68,7 +72,7 @@ namespace BoneReferenceHelper
                                         slotField.GetSyncMemberFieldInfo(index),
                                         ui);
 
-                                    ui.Button("Set references from hierarchy").LocalPressed += (button, data) => SetReferencesFromHierarchy(__instance, button, slotField.Reference.Target);
+                                    ui.Button("Set references from hierarchy").LocalPressed += (button, data) => SetReferencesFromHierarchy(__instance, button, slotField.Reference.Target, UseMeshBoneListInstead);
                                 }
                                 ui.NestOut();
                             }
@@ -80,17 +84,39 @@ namespace BoneReferenceHelper
                 }
                 ui.NestOut();
             }
-            static void CopyBoneReferences(SkinnedMeshRenderer instance, IButton button)
-            {
+
+            static List<Bone> GetBonesList(SkinnedMeshRenderer instance) {
+                if (instance.Mesh.Asset == null) return new List<Bone>();
+                
+                Mesh mesh = instance.Mesh.Asset;
+                return mesh.Data.Bones.ToList();
+            }
+            static void CopyBoneReferences(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
+                List<Bone> bones = GetBonesList(instance);
                 string lastText = button.LabelText;
                 
                 Msg($"Bone Count: {instance.Bones.Count}");
                 StringBuilder builder = new StringBuilder();
-                
-                foreach (Slot slot in instance.Bones) {
-                    builder.AppendFormat("{0},{1}\n", slot.ReferenceID, slot.Name);
+
+                for (int index = 0; index < instance.Bones.Count; index++) {
+                    Slot slot = instance.Bones[index];
+                    string refId = "null";
+                    string name = "null";
+
+                    if (slot != null) {
+                        refId = slot.ReferenceID.ToString();
+                        name = slot.Name;
+                    }
+
+                    if (meshBoneList) {
+                        try {
+                            name = bones[index].Name;
+                        } catch(IndexOutOfRangeException) {}
+                    }
+
+                    builder.AppendFormat("{0},{1}\n", refId, name);
                 }
-                
+
                 instance.InputInterface.Clipboard.SetText(builder.ToString());
 
                 button.LabelText = "Copied!";
@@ -110,11 +136,16 @@ namespace BoneReferenceHelper
                     
                     foreach (string bone in clipboard.Split('\n')) {
                         int commaIndex = bone.IndexOf(',');
-                        RefID reference = RefID.Parse(bone.Substring(0, commaIndex));
+                        try {
+                            RefID reference = RefID.Parse(bone.Substring(0, commaIndex));
 
-                        instance.Bones.Add((Slot) instance.World.ReferenceController.GetObjectOrNull(reference));
-                        
-                        countProcessed++;
+                            instance.Bones.Add((Slot)instance.World.ReferenceController.GetObjectOrNull(reference));
+
+                            countProcessed++;
+                        }
+                        catch (ArgumentException) {
+                            instance.Bones.Add(null);
+                        }
                     }
 
                     button.LabelText = $"Bones processed: {countProcessed}";
@@ -131,11 +162,17 @@ namespace BoneReferenceHelper
                     .Select(boneString =>
                     {
                         int commaIndex = boneString.IndexOf(',');
-                        RefID reference = RefID.Parse(boneString.Substring(0, commaIndex));
-                        string name = boneString.Substring(commaIndex + 1);
+                        try {
+                            RefID reference = RefID.Parse(boneString.Substring(0, commaIndex));
+                            string name = boneString.Substring(commaIndex + 1);
 
-                        return new KeyValuePair<string, RefID>(name, reference);
+                            return new KeyValuePair<string, RefID>(name, reference);
+                        }
+                        catch (ArgumentException) {
+                            return new KeyValuePair<string, RefID>("null", RefID.Null);
+                        }
                     })
+                    .Distinct()
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
             }
 
@@ -160,44 +197,58 @@ namespace BoneReferenceHelper
                 return foundSlots;
             }
 
-            static int ReplaceSlotReferences(SkinnedMeshRenderer instance, Dictionary<string, RefID> reference) {
+            static int ReplaceSlotReferences(SkinnedMeshRenderer instance, Dictionary<string, RefID> reference, bool meshBoneList) {
                 int countProcessed = 0;
                 
-                foreach (var slot in instance.Bones.Elements) {
-                    if (slot.Target == null) continue;
-                    
-                    string slotName = slot.Target.Name;
+                List<Bone> bones = GetBonesList(instance);
+                
+                // Create elements if using mesh bone list
+                if (meshBoneList) {
+                    while (instance.Bones.Count < bones.Count) {
+                        instance.Bones.Add(null);
+                    }
+                }
+                
+                List<SyncRef<Slot>> list = instance.Bones.Elements.ToList();
 
-                    if (!reference.ContainsKey(slotName)) continue;
-                    
-                    slot.Value = reference[slotName];
-                    countProcessed++;
+                for (int index = 0; index < list.Count; index++) {
+                    SyncRef<Slot> slot = list[index];
+                    if (slot.Target == null && !meshBoneList) continue;
+
+                    try {
+                        string slotName = meshBoneList ? bones[index].Name : slot.Target.Name;
+
+                        if (!reference.ContainsKey(slotName)) continue;
+
+                        slot.Value = reference[slotName];
+                        countProcessed++;
+                    } catch(IndexOutOfRangeException) {}
                 }
 
                 return countProcessed;
             }
 
-            static void PasteBoneReferencesBasedOnNames(SkinnedMeshRenderer instance, IButton button) {
+            static void PasteBoneReferencesBasedOnNames(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
                 string lastText = button.LabelText;
                 
                 string clipboard = instance.InputInterface.Clipboard.GetText().Trim();
 
                 Dictionary<string, RefID> boneReference = ParseStringToDictionary(clipboard);
 
-                int countProcessed = ReplaceSlotReferences(instance, boneReference);
+                int countProcessed = ReplaceSlotReferences(instance, boneReference, meshBoneList);
 
                 button.LabelText = $"Found and replaced: {countProcessed}";
                 
                 button.RunInSeconds(1f, () => button.LabelText = lastText);
             }
             
-            static void SetReferencesFromHierarchy(SkinnedMeshRenderer instance, IButton button, Slot root) {
+            static void SetReferencesFromHierarchy(SkinnedMeshRenderer instance, IButton button, Slot root, bool meshBoneList) {
                 string lastText = button.LabelText;
 
                 if (root != null) {
                     Dictionary<string, RefID> boneReference = IndexAllChildren(root);
 
-                    int countProcessed = ReplaceSlotReferences(instance, boneReference);
+                    int countProcessed = ReplaceSlotReferences(instance, boneReference, meshBoneList);
 
                     button.LabelText = $"Found and replaced: {countProcessed}";
                 }
