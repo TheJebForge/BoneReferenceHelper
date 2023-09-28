@@ -1,24 +1,20 @@
-﻿using BaseX;
-using CodeX;
-using NeosModLoader;
+﻿using Elements.Core;
+using ResoniteModLoader;
 using HarmonyLib;
 using FrooxEngine;
-using FrooxEngine.LogiX.References;
-using FrooxEngine.LogiX.WorldModel;
 using FrooxEngine.UIX;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 
 namespace BoneReferenceHelper
 {
-    public class BoneReferenceHelper : NeosMod
+    public class BoneReferenceHelper : ResoniteMod
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "1.0.1";
+        public override string Version => "2.0.0";
 
         public override void OnEngineInit()
         {
@@ -30,6 +26,7 @@ namespace BoneReferenceHelper
         class SkinnedMeshRenderer_BuildInspectorUI_Patch
         {
             static void Postfix(SkinnedMeshRenderer __instance, UIBuilder ui) {
+
                 ui.Style.MinHeight = 24 * 4 + 4 * 3 + 36;
 
                 bool UseMeshBoneListInstead = false;
