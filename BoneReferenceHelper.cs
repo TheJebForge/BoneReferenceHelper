@@ -1,4 +1,5 @@
 ﻿using Elements.Core;
+using Elements.Assets;
 using ResoniteModLoader;
 using HarmonyLib;
 using FrooxEngine;
@@ -14,7 +15,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.0.0";
+        public override string Version => "2.0.1";
 
         public override void OnEngineInit()
         {
