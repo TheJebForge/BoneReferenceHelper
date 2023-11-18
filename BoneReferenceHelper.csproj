@@ -3,7 +3,7 @@
     <ProjectGuid>{896FE1A9-E599-465C-9409-DD36A700B0B6}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>BoneReferenceHelper</RootNamespace>
-    <TargetFramework>net462</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <ResonitePath>$(MSBuildThisFileDirectory)Resonite</ResonitePath>
@@ -15,7 +15,7 @@
     <CopyToMods Condition="'$(CopyToMods)'==''">true</CopyToMods>
     <DebugSymbols Condition="'$(Configuration)'=='Release'">false</DebugSymbols>
     <DebugType Condition="'$(Configuration)'=='Release'">None</DebugType>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>TheJebForge</Authors>
     <PackageId>BoneReferenceHelper</PackageId>
     <ApplicationIcon />
