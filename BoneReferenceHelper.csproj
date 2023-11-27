@@ -15,7 +15,7 @@
     <CopyToMods Condition="'$(CopyToMods)'==''">true</CopyToMods>
     <DebugSymbols Condition="'$(Configuration)'=='Release'">false</DebugSymbols>
     <DebugType Condition="'$(Configuration)'=='Release'">None</DebugType>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Authors>TheJebForge</Authors>
     <PackageId>BoneReferenceHelper</PackageId>
     <ApplicationIcon />
@@ -28,6 +28,9 @@
     </Reference>
     <Reference Include="FrooxEngine">
       <HintPath>$(ResonitePath)Resonite_Data/Managed/FrooxEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="FrooxEngine.Store">
+      <HintPath>$(ResonitePath)Resonite_Data/Managed/FrooxEngine.Store.dll</HintPath>
     </Reference>
     <Reference Include="BaseX">
       <HintPath>$(ResonitePath)Resonite_Data/Managed/Elements.Core.dll</HintPath>
