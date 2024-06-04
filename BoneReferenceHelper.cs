@@ -15,7 +15,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.0.2";
+        public override string Version => "2.0.4";
         public override string Link => "https://github.com/TheJebForge/BoneReferenceHelper";
 
         public override void OnEngineInit()
