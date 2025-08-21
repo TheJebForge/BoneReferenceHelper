@@ -3,7 +3,7 @@
     <ProjectGuid>{896FE1A9-E599-465C-9409-DD36A700B0B6}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>BoneReferenceHelper</RootNamespace>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <ResonitePath>$(MSBuildThisFileDirectory)Resonite</ResonitePath>
@@ -15,7 +15,7 @@
     <CopyToMods Condition="'$(CopyToMods)'==''">true</CopyToMods>
     <DebugSymbols Condition="'$(Configuration)'=='Release'">false</DebugSymbols>
     <DebugType Condition="'$(Configuration)'=='Release'">None</DebugType>
-    <Version>2.0.4</Version>
+    <Version>2.0.5</Version>
     <Authors>TheJebForge</Authors>
     <PackageId>BoneReferenceHelper</PackageId>
     <ApplicationIcon />
@@ -27,16 +27,16 @@
       <HintPath>$(ResonitePath)rml_libs/0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="FrooxEngine">
-      <HintPath>$(ResonitePath)Resonite_Data/Managed/FrooxEngine.dll</HintPath>
+      <HintPath>$(ResonitePath)FrooxEngine.dll</HintPath>
     </Reference>
     <Reference Include="FrooxEngine.Store">
-      <HintPath>$(ResonitePath)Resonite_Data/Managed/FrooxEngine.Store.dll</HintPath>
+      <HintPath>$(ResonitePath)FrooxEngine.Store.dll</HintPath>
     </Reference>
     <Reference Include="BaseX">
-      <HintPath>$(ResonitePath)Resonite_Data/Managed/Elements.Core.dll</HintPath>
+      <HintPath>$(ResonitePath)Elements.Core.dll</HintPath>
     </Reference>
     <Reference Include="CodeX">
-      <HintPath>$(ResonitePath)Resonite_Data/Managed/Elements.Assets.dll</HintPath>
+      <HintPath>$(ResonitePath)Elements.Assets.dll</HintPath>
     </Reference>
     <Reference Include="ResoniteModLoader">
       <HintPath>$(ResonitePath)Libraries/ResoniteModLoader.dll</HintPath>

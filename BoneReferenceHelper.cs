@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BoneReferenceHelper
 {
@@ -15,7 +16,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.0.4";
+        public override string Version => "2.0.5";
         public override string Link => "https://github.com/TheJebForge/BoneReferenceHelper";
 
         public override void OnEngineInit()
@@ -48,12 +49,12 @@ namespace BoneReferenceHelper
                         ui.VerticalLayout(4f);
                         {
                             ui.Checkbox("Use mesh bone list for names instead", false).State.OnValueChange += field => UseMeshBoneListInstead = field.Value;
-                            ui.Button("Copy Bone References into Clipboard").LocalPressed += (button, data) => CopyBoneReferences(__instance, button, UseMeshBoneListInstead);
+                            ui.Button("Copy Bone References into Clipboard").LocalPressed += (button, data) => Task.Run(async () => await CopyBoneReferences(__instance, button, UseMeshBoneListInstead));
 
                             ui.HorizontalLayout(4f);
                             {
-                                ui.Button("Paste directly").LocalPressed += (button, data) => PasteBoneReferencesDirectly(__instance, button);
-                                ui.Button("Paste based on current names").LocalPressed += (button, data) => PasteBoneReferencesBasedOnNames(__instance, button, UseMeshBoneListInstead);
+                                ui.Button("Paste directly").LocalPressed += (button, data) => Task.Run(async () => await PasteBoneReferencesDirectly(__instance, button));
+                                ui.Button("Paste based on current names").LocalPressed += (button, data) => Task.Run(async () => await PasteBoneReferencesBasedOnNames(__instance, button, UseMeshBoneListInstead));
                             }
                             ui.NestOut();
 
@@ -90,7 +91,8 @@ namespace BoneReferenceHelper
                 Mesh mesh = instance.Mesh.Asset;
                 return mesh.Data.Bones.ToList();
             }
-            static void CopyBoneReferences(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
+            
+            static async Task CopyBoneReferences(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
                 List<Bone> bones = GetBonesList(instance);
                 string lastText = button.LabelText;
                 
@@ -116,44 +118,46 @@ namespace BoneReferenceHelper
                     builder.AppendFormat("{0},{1}\n", refId, name);
                 }
 
-                instance.InputInterface.Clipboard.SetText(builder.ToString());
+                await instance.InputInterface.Clipboard.SetText(builder.ToString());
 
                 button.LabelText = "Copied!";
                 
                 button.RunInSeconds(1f, () => button.LabelText = lastText);
             }
 
-            static void PasteBoneReferencesDirectly(SkinnedMeshRenderer instance, IButton button) {
+            static async Task PasteBoneReferencesDirectly(SkinnedMeshRenderer instance, IButton button) {
                 string lastText = button.LabelText;
-
-                string clipboard = instance.InputInterface.Clipboard.GetText().Trim();
                 
-                if (clipboard.StartsWith("ID")) {
-                    instance.Bones.Clear();
+                string clipboard = (await instance.InputInterface.Clipboard.GetText()).Trim();
+                
+                instance.World.RunSynchronously(() => {
+                    if (clipboard.StartsWith("ID")) {
+                        instance.Bones.Clear();
 
-                    int countProcessed = 0;
+                        int countProcessed = 0;
                     
-                    foreach (string bone in clipboard.Split('\n')) {
-                        int commaIndex = bone.IndexOf(',');
-                        try {
-                            RefID reference = RefID.Parse(bone.Substring(0, commaIndex));
+                        foreach (string bone in clipboard.Split('\n')) {
+                            int commaIndex = bone.IndexOf(',');
+                            try {
+                                RefID reference = RefID.Parse(bone.Substring(0, commaIndex));
 
-                            instance.Bones.Add((Slot)instance.World.ReferenceController.GetObjectOrNull(reference));
+                                instance.Bones.Add((Slot)instance.World.ReferenceController.GetObjectOrNull(reference));
 
-                            countProcessed++;
+                                countProcessed++;
+                            }
+                            catch (ArgumentException) {
+                                instance.Bones.Add(null);
+                            }
                         }
-                        catch (ArgumentException) {
-                            instance.Bones.Add(null);
-                        }
+
+                        button.LabelText = $"Bones processed: {countProcessed}";
                     }
-
-                    button.LabelText = $"Bones processed: {countProcessed}";
-                }
-                else {
-                    button.LabelText = "No valid bones in clipboard";
-                }
+                    else {
+                        button.LabelText = "No valid bones in clipboard";
+                    }
                 
-                button.RunInSeconds(1f, () => button.LabelText = lastText);
+                    button.RunInSeconds(1f, () => button.LabelText = lastText);
+                });
             }
             
             static Dictionary<string, RefID> ParseStringToDictionary(string clipboard) {
@@ -227,18 +231,20 @@ namespace BoneReferenceHelper
                 return countProcessed;
             }
 
-            static void PasteBoneReferencesBasedOnNames(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
+            static async Task PasteBoneReferencesBasedOnNames(SkinnedMeshRenderer instance, IButton button, bool meshBoneList) {
                 string lastText = button.LabelText;
                 
-                string clipboard = instance.InputInterface.Clipboard.GetText().Trim();
+                string clipboard = (await instance.InputInterface.Clipboard.GetText()).Trim();
 
                 Dictionary<string, RefID> boneReference = ParseStringToDictionary(clipboard);
 
-                int countProcessed = ReplaceSlotReferences(instance, boneReference, meshBoneList);
+                instance.World.RunSynchronously(() => {
+                    int countProcessed = ReplaceSlotReferences(instance, boneReference, meshBoneList);
 
-                button.LabelText = $"Found and replaced: {countProcessed}";
+                    button.LabelText = $"Found and replaced: {countProcessed}";
                 
-                button.RunInSeconds(1f, () => button.LabelText = lastText);
+                    button.RunInSeconds(1f, () => button.LabelText = lastText);
+                });
             }
             
             static void SetReferencesFromHierarchy(SkinnedMeshRenderer instance, IButton button, Slot root, bool meshBoneList) {
