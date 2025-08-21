@@ -21,7 +21,7 @@ namespace BoneReferenceHelper
 
         public override void OnEngineInit()
         {
-            Harmony harmony = new Harmony($"net.{Author}.{Name}");
+            Harmony harmony = new Harmony($"com.{Author}.{Name}");
             harmony.PatchAll();
         }
 
