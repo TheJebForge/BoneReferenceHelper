@@ -3,7 +3,7 @@
 A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader) mod for [Resonite](https://resonite.com/) that adds a lot of useful things for transferring bone references of skinned mesh renderers
 
 ### Buttons that get added:
-![image](https://user-images.githubusercontent.com/12719947/185762036-d35a98b6-ea70-4aea-b71c-161f2ef099a5.png)
+<img width="2003" height="433" alt="image" src="https://github.com/user-attachments/assets/50896c67-0d02-4e4c-aa67-60f9d8eea900" />
 
 - Copy Bone References into Clipboard - reads all the references in bone list of SkinnedMeshRenderer and serializes them into Clipboard
 - Paste directly - reads reference list from Clipboard and directly sets bone list to whatever was found in the Clipboard
