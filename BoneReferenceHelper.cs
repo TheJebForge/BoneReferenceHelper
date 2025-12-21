@@ -17,7 +17,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.1.0";
+        public override string Version => "2.2.0";
         public override string Link => "https://github.com/TheJebForge/BoneReferenceHelper";
 
         [AutoRegisterConfigKey] static readonly ModConfigurationKey<bool> ReplacementLog = new ModConfigurationKey<bool>(
@@ -41,8 +41,10 @@ namespace BoneReferenceHelper
         {
             public bool UseMeshBoneListInstead { get; set; }
             public bool UseFindAndReplace { get; set; }
+            public bool ApplyOnDestinationInstead { get; set; }
             public bool UseRegex { get; set; }
             public bool IgnoreCase { get; set; } = true;
+            public bool UseTrim { get; set; } = true;
             public string FindPattern { get; set; }
             public string ReplacePattern { get; set; }
         }
@@ -63,7 +65,7 @@ namespace BoneReferenceHelper
         class SkinnedMeshRenderer_BuildInspectorUI_Patch
         {
             static void Postfix(SkinnedMeshRenderer __instance, UIBuilder ui) {
-                ui.Style.MinHeight = 330;
+                ui.Style.MinHeight = 360;
 
                 DialogSettings settings = GetSettings(__instance);
                 
@@ -111,8 +113,8 @@ namespace BoneReferenceHelper
                             }
                             ui.NestOut();
                             
-                            ui.Checkbox("Ignore case", settings.IgnoreCase).State.OnValueChange += field => settings.IgnoreCase = field.Value;
-                            ui.Checkbox("Use find and replace on the source names", settings.UseFindAndReplace).State.OnValueChange += field => settings.UseFindAndReplace = field.Value;
+                            ui.Checkbox("Use find and replace", settings.UseFindAndReplace).State.OnValueChange += field => settings.UseFindAndReplace = field.Value;
+                            ui.Checkbox("Off - Apply find and replace on names from clipboard or armature / On - Apply on names from this mesh", settings.ApplyOnDestinationInstead).State.OnValueChange += field => settings.ApplyOnDestinationInstead = field.Value;
                             ui.Checkbox("Use RegEx", settings.UseRegex).State.OnValueChange += field => settings.UseRegex = field.Value;
 
                             {
@@ -144,6 +146,9 @@ namespace BoneReferenceHelper
                             }
 
                             ui.Text("See format help on github.com/TheJebForge/BoneReferenceHelper");
+                            
+                            ui.Checkbox("Ignore case", settings.IgnoreCase).State.OnValueChange += field => settings.IgnoreCase = field.Value;
+                            ui.Checkbox("Ignore leading and trailing whitespace", settings.UseTrim).State.OnValueChange += field => settings.UseTrim = field.Value;
                         }
                         ui.NestOut();
                     }
@@ -158,10 +163,50 @@ namespace BoneReferenceHelper
                 Mesh mesh = instance.Mesh.Asset;
                 return mesh.Data.Bones.ToList();
             }
-            
+
+            static string LogIfDifferent(string original, string newValue, bool shouldLog) {
+                if (shouldLog)
+                    Msg(
+                        original != newValue
+                            ? $"Name '{original}' was replaced with '{newValue}'"
+                            : "No replacement was done"
+                    );
+                return newValue;
+            }
+
+            static string PerformFindAndReplaceIfNeeded(string name, DialogSettings settings, bool shouldLog, bool isDestination) {
+                if (!settings.UseFindAndReplace || settings.ApplyOnDestinationInstead != isDestination) return name;
+
+                string find = settings.FindPattern ?? "";
+                string replace = settings.ReplacePattern ?? "";
+                
+                if (shouldLog) Msg($"Performing find & replace on '{name}'");
+
+                if (!settings.UseRegex) {
+                    if (find == "") {
+                        if (shouldLog) Msg($"Find is empty, using string.Format with '{replace}'");
+                        return LogIfDifferent(name, string.Format(replace, name), shouldLog);
+                    }
+
+                    if (shouldLog) Msg($"Simple find and replace with '{find}' and '{replace}'");
+                    return LogIfDifferent(name, name.Replace(find, replace), shouldLog);
+                }
+
+                if (shouldLog) Msg($"RegEx replace with '{find}' and '{replace}'");
+                return LogIfDifferent(name, Regex.Replace(name, find, replace), shouldLog);
+            }
+
+            static string SanitizeForComparison(string name, DialogSettings settings) {
+                if (settings.IgnoreCase) name = name.ToLowerInvariant();
+                if (settings.UseTrim) name = name.Trim();
+                return name;
+            }
+
             static async Task CopyBoneReferences(SkinnedMeshRenderer instance, IButton button, DialogSettings settings) {
                 List<Bone> bones = GetBonesList(instance);
                 string lastText = button.LabelText;
+                
+                bool replaceLog = _config.GetValue(ReplacementLog);
                 
                 Msg($"Bone Count: {instance.Bones.Count}");
                 StringBuilder builder = new StringBuilder();
@@ -181,6 +226,8 @@ namespace BoneReferenceHelper
                             name = bones[index].Name;
                         } catch(IndexOutOfRangeException) {}
                     }
+
+                    name = PerformFindAndReplaceIfNeeded(name, settings, replaceLog, true);
 
                     builder.Append($"{refId},{name}\n");
                 }
@@ -226,7 +273,7 @@ namespace BoneReferenceHelper
                     button.RunInSeconds(1f, () => button.LabelText = lastText);
                 });
             }
-            
+
             static Dictionary<string, RefID> ParseStringToDictionary(string clipboard, DialogSettings settings) {
                 return clipboard.Split('\n')
                     .Select(boneString =>
@@ -236,7 +283,7 @@ namespace BoneReferenceHelper
                             RefID reference = RefID.Parse(boneString[..commaIndex]);
                             string name = boneString[(commaIndex + 1)..];
 
-                            if (settings.IgnoreCase) name = name.ToLowerInvariant();
+                            name = SanitizeForComparison(name, settings);
 
                             return new KeyValuePair<string, RefID>(name, reference);
                         }
@@ -251,6 +298,8 @@ namespace BoneReferenceHelper
             static Dictionary<string, RefID> IndexAllChildren(Slot root, DialogSettings settings) {
                 Dictionary<string, RefID> foundSlots = new Dictionary<string, RefID>();
 
+                bool replaceLog = _config.GetValue(ReplacementLog);
+                
                 Queue<Slot> slotQueue = new Queue<Slot>();
                 slotQueue.Enqueue(root);
 
@@ -260,7 +309,9 @@ namespace BoneReferenceHelper
                     try {
                         string name = current.Name;
 
-                        if (settings.IgnoreCase) name = name.ToLowerInvariant();
+                        name = PerformFindAndReplaceIfNeeded(name, settings, replaceLog, false);
+
+                        name = SanitizeForComparison(name, settings);
                         
                         foundSlots.Add(name, current.ReferenceID);
                     } catch(ArgumentException) {}
@@ -271,28 +322,6 @@ namespace BoneReferenceHelper
                 }
 
                 return foundSlots;
-            }
-
-            static string PerformFindAndReplaceIfNeeded(string name, DialogSettings settings, bool shouldLog) {
-                if (!settings.UseFindAndReplace) return name;
-
-                string find = settings.FindPattern ?? "";
-                string replace = settings.ReplacePattern ?? "";
-                
-                if (shouldLog) Msg($"Performing find & replace on '{name}'");
-
-                if (!settings.UseRegex) {
-                    if (find == "") {
-                        if (shouldLog) Msg($"Find is empty, using string.Format with '{replace}'");
-                        return string.Format(replace, name);
-                    }
-
-                    if (shouldLog) Msg($"Simple find and replace with '{find}' and '{replace}'");
-                    return name.Replace(find, replace);
-                }
-
-                if (shouldLog) Msg($"RegEx replace with '{find}' and '{replace}'");
-                return Regex.Replace(name, find, replace);
             }
 
             static int ReplaceSlotReferences(SkinnedMeshRenderer instance, Dictionary<string, RefID> reference, DialogSettings settings) {
@@ -318,17 +347,11 @@ namespace BoneReferenceHelper
                     try {
                         string slotName = settings.UseMeshBoneListInstead ? bones[index].Name : slot.Target.Name;
 
-                        string newSlotName = PerformFindAndReplaceIfNeeded(slotName, settings, replaceLog);
-                        if (replaceLog)
-                            Msg(
-                                slotName != newSlotName
-                                    ? $"Name '{slotName}' was replaced with '{newSlotName}'"
-                                    : "No replacement was done"
-                            );
+                        slotName = PerformFindAndReplaceIfNeeded(slotName, settings, replaceLog, true);
 
-                        if (settings.IgnoreCase) newSlotName = newSlotName.ToLowerInvariant();
+                        slotName = SanitizeForComparison(slotName, settings);
 
-                        if (!reference.TryGetValue(newSlotName, out RefID value)) continue;
+                        if (!reference.TryGetValue(slotName, out RefID value)) continue;
 
                         slot.Value = value;
                         countProcessed++;
