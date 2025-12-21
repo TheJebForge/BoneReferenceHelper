@@ -26,6 +26,8 @@ The feature will perform find and replace operation in each name it sees from th
   - Example: if bone's name is `Arm.L`, find field is `(.*)\.(.?)` and replace field is `$2_$1`, the result will be `L_Arm`
 - If no match was found in the bone's name, it will be left as is
 
+**Find and replace is applied before letter case and whitespaces get discarded!**
+
 If you want to see what the find and replace feature is doing, you can enable replacementLog in the mod's settings and then check Resonite logs while using the feature.
 
 ### Some usecases:
