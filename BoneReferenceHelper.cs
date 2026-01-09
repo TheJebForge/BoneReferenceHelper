@@ -7,6 +7,7 @@ using FrooxEngine.UIX;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.2.0";
+        public override string Version => "2.2.1";
         public override string Link => "https://github.com/TheJebForge/BoneReferenceHelper";
 
         [AutoRegisterConfigKey] static readonly ModConfigurationKey<bool> ReplacementLog = new ModConfigurationKey<bool>(
@@ -49,7 +50,7 @@ namespace BoneReferenceHelper
             public string ReplacePattern { get; set; }
         }
 
-        static readonly Dictionary<SkinnedMeshRenderer, DialogSettings> SettingsMap = [];
+        static readonly ConditionalWeakTable<SkinnedMeshRenderer, DialogSettings> SettingsMap = [];
 
         static DialogSettings GetSettings(SkinnedMeshRenderer instance) {
             if (SettingsMap.TryGetValue(instance, out DialogSettings settings))
