@@ -18,7 +18,7 @@ namespace BoneReferenceHelper
     {
         public override string Name => "BoneReferenceHelper";
         public override string Author => "TheJebForge";
-        public override string Version => "2.2.1";
+        public override string Version => "2.2.2";
         public override string Link => "https://github.com/TheJebForge/BoneReferenceHelper";
 
         [AutoRegisterConfigKey] static readonly ModConfigurationKey<bool> ReplacementLog = new ModConfigurationKey<bool>(
